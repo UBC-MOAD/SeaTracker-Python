@@ -21,12 +21,14 @@ import numpy
 
 def initialize_mesh(mesh_mask_file):
     """
+    ##TODO: finish doctring
 
     :param str mesh_mask_file: Path and file name of the NEMO mesh mask file
                                to initialize the mesh from.
     :return:
     :rtype: 6-tuple of :py:class:`numpy.ndarray`
     """
+    ##TODO: Accept str, Path, or netCDF4.Dataset
     with netCDF4.Dataset(mesh_mask_file) as data:
         t_mask = data['tmask'][0]
         e1u = data['e1u'][0]
@@ -38,5 +40,85 @@ def initialize_mesh(mesh_mask_file):
         for i in range(t_mask.shape[1]):
             for j in range(t_mask.shape[2]):
                 totaldepth[i, j] = gdepw_0[int(mbathy[i, j]), i, j]
+        #TODO: Investigate runtime divide by zero and invalid value warnings
         fractiondepth = gdepw_0 / totaldepth
+    ##TODO: Refactor to return SimpleNamespace
     return t_mask, e1u, e2v, e3w0, totaldepth, fractiondepth
+
+
+def get_initial_data(u_field_path, v_field_path, w_field_path, tracer_fields_path, fractiondepth, totaldepth, e3w0):
+    """
+    ##TODO: finish doctring
+
+    :param u_field_path: Path and file name of the NEMO u-velocity field to
+                         load.
+
+    :param v_field_path: Path and file name of the NEMO v-velocity field to
+                         load.
+
+    :param w_field_path: Path and file name of the NEMO w-velocity field to
+                         load.
+
+    :param tracer_fields_path: Path and file name of the NEMO tracer fields to
+                         load.
+
+    :param fractiondepth:
+    :param totaldepth:
+    :param e3w0:
+
+    :return:
+    :rtype: 15-tuple of :py:class:`numpy.ndarray`
+    """
+    ##TODO: Accept str, Path, or netCDF4.Dataset objects for field file paths
+    udataset = netCDF4.Dataset(u_field_path)
+    tcorrs = udataset['time_counter'][:3]
+    deltat = tcorrs[1] - tcorrs[0]
+    #    xcorrs = udataset['gridX'][:]
+    #    ycorrs = udataset['gridY'][:]
+    xcorrs = range(udataset.dimensions['x'].size)
+    ycorrs = range(udataset.dimensions['y'].size)
+    depthsize = udataset['depthu'][:].shape[0]
+    # this makes it depth, not grid point and I need one above the surface
+    zcorrs = numpy.linspace(0, depthsize, depthsize + 1) - 0.5
+
+    longaxis = max(len(xcorrs), len(ycorrs), len(zcorrs), len(tcorrs))
+    t_coords = numpy.zeros((4, longaxis))
+    t_coords[0, 0:len(tcorrs)] = tcorrs
+    t_coords[0, len(tcorrs):] = max(tcorrs)
+    t_coords[1, 0:len(zcorrs)] = zcorrs
+    t_coords[1, len(zcorrs):] = max(zcorrs)
+    t_coords[2, 0:len(ycorrs)] = ycorrs
+    t_coords[2, len(ycorrs):] = max(ycorrs)
+    t_coords[3, 0:len(xcorrs)] = xcorrs
+    t_coords[3, len(xcorrs):] = max(xcorrs)
+    # other grids
+    u_coords = numpy.copy(t_coords)
+    u_coords[3] = t_coords[3] + 0.5
+    v_coords = numpy.copy(t_coords)
+    v_coords[2] = t_coords[2] + 0.5
+    w_coords = numpy.copy(t_coords)
+    w_coords[1] = t_coords[1] + 0.5
+
+    u = numpy.zeros((3, len(zcorrs), len(ycorrs), len(xcorrs)))
+    u[:, 1:] = udataset['vozocrtx'][0:3]
+    u[:, 0] = 2 * u[:, 1] - u[:, 2]
+
+    v = numpy.zeros_like(u)
+    vdataset = netCDF4.Dataset(v_field_path)
+    v[:, 1:] = vdataset['vomecrty'][0:3]
+    v[:, 0] = 2 * v[:, 1] - v[:, 2]
+
+    wdataset = netCDF4.Dataset(w_field_path)
+    w = numpy.zeros_like(u)
+    w = - wdataset['vovecrtz'][
+          0:3]  # change to velocity down (increasing depth)
+
+    tdataset = netCDF4.Dataset(tracer_fields_path)
+    ssh = tdataset['sossheig'][0:3]
+    e3w = numpy.empty_like(w)
+    for i in range(3):
+        e3w[i] = e3w0 * (1 + ssh[i] / totaldepth)
+
+    nextindex = 3
+    ##TODO: Refactor to return SimpleNamespace?
+    return u, v, w, tcorrs, t_coords, u_coords, v_coords, w_coords, deltat, nextindex, e3w, udataset, vdataset, wdataset, tdataset
