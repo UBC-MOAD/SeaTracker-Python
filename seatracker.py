@@ -15,6 +15,9 @@
 
 """
 """
+import math
+import random
+
 import netCDF4
 import numpy
 
@@ -60,7 +63,7 @@ def get_initial_data(u_field_path, v_field_path, w_field_path, tracer_fields_pat
                          load.
 
     :param tracer_fields_path: Path and file name of the NEMO tracer fields to
-                         load.
+                               load.
 
     :param fractiondepth:
     :param totaldepth:
@@ -122,3 +125,38 @@ def get_initial_data(u_field_path, v_field_path, w_field_path, tracer_fields_pat
     nextindex = 3
     ##TODO: Refactor to return SimpleNamespace?
     return u, v, w, tcorrs, t_coords, u_coords, v_coords, w_coords, deltat, nextindex, e3w, udataset, vdataset, wdataset, tdataset
+
+
+def random_points(t_coords, deltat, t_mask):
+    """Choose a random point in the domain at a random time before deltat
+    and calculate a 3-D cloud of the 27 points nearest to (and including) the
+    selected point.
+
+    ##TODO: finish doctring
+
+    :param t_coords:
+    :param deltat:
+    :param t_mask:
+
+    :return:
+    """
+    t0 = t_coords[0, 0]
+    yi = numpy.zeros((27, 3))
+
+    good = 0
+    while good == 0:
+        tc = random.uniform(t0, t0+deltat)
+        zc = random.uniform(0., 39.)
+        yc = random.uniform(t_coords[2, 0], t_coords[2, -1])
+        xc = random.uniform(t_coords[3, 0], t_coords[3, -1])
+
+        count = 0
+        for k in range(3):
+            for j in range(3):
+                for i in range(3):
+                    yi[count, 0] = min(zc + k, 39.)
+                    yi[count, 1] = min(yc + j, t_coords[2, -1])
+                    yi[count, 2] = min(xc + i, t_coords[3, -1])
+                    good += t_mask[math.floor(yi[count, 0]), math.floor(yi[count, 1]), math.floor(yi[count, 2])]
+                    count += 1
+    return tc, yi
