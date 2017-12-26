@@ -1,0 +1,40 @@
+# conda environment description file for SeaTracker package
+# development environment
+#
+# Create a conda environment for development, testing, and documentation
+# of the UBC MOAD SeaTracker with:
+#
+#    $ conda env create -f seatracker-python/environment-dev.yaml
+#    $ source activate seatracker
+#    $ pip install --editable seatracker-python
+
+name: seatracker
+
+channels:
+  - defaults
+  - conda-forge
+
+dependencies:
+  - matplotlib
+  - netcdf4
+  - numpy
+  - pip
+  - python=3.6
+  - scipy
+
+  # For unit tests
+  - coverage
+  - pytest
+
+  # For documentation
+  - sphinx
+  - sphinx_rtd_theme
+
+  # For exploration
+  - notebook
+  - jupyter_contrib_nbextensions
+
+  - pip:
+
+    # For coding style
+    - yapf
