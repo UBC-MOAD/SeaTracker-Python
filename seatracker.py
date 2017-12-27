@@ -160,3 +160,37 @@ def random_points(t_coords, deltat, t_mask):
                     good += t_mask[math.floor(yi[count, 0]), math.floor(yi[count, 1]), math.floor(yi[count, 2])]
                     count += 1
     return tc, yi
+
+
+def grid_points(t_coords, t_mask, zc, yc, xc):
+    """Calculate the 3-D cloud of the 27 points nearest to (and including) the
+    (zc, yc, xc) point.
+
+    ##TODO: finish doctring
+
+    :param t_coords:
+    :param t_mask:
+    :param zc:
+    :param yc:
+    :param xc:
+
+    :return:
+    """
+    tc = t_coords[0, 0]
+    yi = numpy.zeros((27, 3))
+
+    good = 0
+    count = 0
+    for k in range(3):
+        for j in range(3):
+            for i in range(3):
+                yi[count, 0] = min(zc + k, 39.)
+                yi[count, 1] = min(yc + j, t_coords[2, -1])
+                yi[count, 2] = min(xc + i, t_coords[3, -1])
+                good += t_mask[math.floor(yi[count, 0]), math.floor(yi[count, 1]), math.floor(yi[count, 2])]
+                ##TODO: Refactor to report points on land or bottom using
+                ## something other than print()
+                if t_mask[math.floor(yi[count, 0]), math.floor(yi[count, 1]), math.floor(yi[count, 2])] == 0:
+                    print(zc+k, yc+j, xc+i)
+                count += 1
+    return tc, yi
