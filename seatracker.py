@@ -15,11 +15,13 @@
 
 """
 """
+import itertools
 import math
 import random
 
 import netCDF4
 import numpy
+from scipy.interpolate import LinearNDInterpolator
 
 
 def initialize_mesh(mesh_mask_file):
@@ -194,3 +196,85 @@ def grid_points(t_coords, t_mask, zc, yc, xc):
                     print(zc+k, yc+j, xc+i)
                 count += 1
     return tc, yi
+
+
+def derivatives(t, poss, t_mask, e3w, e2v, e1u, w_coords, v_coords, u_coords, w, v, u):
+    """
+
+    ##TODO: finish doctring
+
+    :param t:
+    :param poss:
+    :param t_mask:
+    :param e3w:
+    :param e2v:
+    :param e1u:
+    :param w_coords:
+    :param v_coords:
+    :param u_coords:
+    :param w:
+    :param v:
+    :param u:
+
+    :return:
+    """
+    rhs = numpy.zeros_like(poss)
+    for ip in range(int(poss.shape[0]/3)):
+        point = numpy.array([t, poss[0+ip*3], poss[1+ip*3], poss[2+ip*3]])
+        rhs[0+ip*3:3+ip*3] = interpolator(
+            t_mask, e3w, e2v, e1u, w_coords, v_coords, u_coords, w, v, u, point)
+    return numpy.array(rhs) # array or scalar, not a tuple
+
+
+def interpolator(t_mask, e3w, e2v, e1u, w_coords, v_coords, u_coords, w, v, u, point):
+    """
+
+    Based on Stackoverflow https://stackoverflow.com/users/110026/jaime
+
+    ##TODO: finish doctring
+
+    :param t_mask:
+    :param e3w:
+    :param e2v:
+    :param e1u:
+    :param w_coords:
+    :param v_coords:
+    :param u_coords:
+    :param w:
+    :param v:
+    :param u:
+    :param point:
+
+    :return:
+    """
+    dims = len(point)
+    rhs = numpy.zeros((3))
+    if t_mask[int(point[1]), int(point[2]), int(point[3])] != 0:
+        for vel, scale, coords, data in zip([0, 1, 2], [e3w, e2v, e1u,], [w_coords, v_coords, u_coords], [w, v, u]):
+            indices = []
+            sub_coords = []
+            good = True
+            for j in range(dims) :
+                idx = numpy.digitize([point[j]], coords[j])[0]   # finds the index of region
+                if (idx == len(coords[j])):
+                    print (j, 'out of bounds', point[j], vel, coords[j])
+                    good = False
+                elif (idx == 0):
+                    print (j, 'hit surface', point[j], vel, coords[j])
+                    good = False
+                else:
+                    indices += [[idx - 1, idx]]
+                    sub_coords += [coords[j][indices[-1]]]
+            if good:
+                ## TODO: Investigate numpy.itertools.product
+                indices = numpy.array([j for j in itertools.product(*indices)])
+                sub_coords = numpy.array([j for j in itertools.product(*sub_coords)])
+                sub_data = data[list(numpy.swapaxes(indices, 0, 1))]
+                li = LinearNDInterpolator(sub_coords, sub_data, rescale=True) # https://www.mathworks.com/help/matlab/ref/interpn.html
+                if vel == 0:
+                    rhs[vel] = li([point])[0]/scale[indices[0, 0], int(point[1]), int(point[2]), int(point[3])]
+                else:
+                    rhs[vel] = li([point])[0]/scale[indices[0, 2], indices[0, 3]]
+            else:
+                rhs[vel] = 0.
+    return rhs
