@@ -278,3 +278,55 @@ def interpolator(t_mask, e3w, e2v, e1u, w_coords, v_coords, u_coords, w, v, u, p
             else:
                 rhs[vel] = 0.
     return rhs
+
+
+def update_arrays(
+    totaldepth, fractiondepth, e3w0, e3w, tcorrs, u_coords,
+    v_coords, w_coords, u, v, w, deltat, nextindex, udataset, vdataset,
+    wdataset, tdataset
+):
+    """
+
+    ##TODO: finish doctring
+
+    :param totaldepth:
+    :param fractiondepth:
+    :param e3w0:
+    :param e3w:
+    :param tcorrs:
+    :param u_coords:
+    :param v_coords:
+    :param w_coords:
+    :param u:
+    :param v:
+    :param w:
+    :param deltat:
+    :param nextindex:
+    :param udataset:
+    :param vdataset:
+    :param wdataset:
+    :param tdataset:
+
+    :return:
+    """
+    tcorrs = tcorrs + deltat
+    u_coords[0, 0:len(tcorrs)] = tcorrs
+    u_coords[0, len(tcorrs):] = max(tcorrs)
+    v_coords[0] = u_coords[0]
+    w_coords[0] = u_coords[0]
+    u[0:2] = u[1:3]
+    u[2, 1:] = udataset['vozocrtx'][nextindex]
+    u[2, 0] = 2 * u[2, 1] - u[2, 2]
+    v[0:2] = v[1:3]
+    v[2, 1:] = vdataset['vomecrty'][nextindex]
+    v[2, 0] = 2 * v[2, 1] - v[2, 2]
+    w[0:2] = w[1:3]
+    wtemp = numpy.zeros([1, w.shape[1], w.shape[2], w.shape[3]])
+    wtemp[0] = - wdataset['vovecrtz'][nextindex]
+
+    ssh = tdataset['sossheig'][nextindex]
+    e3w[0:2] = e3w[1:3]
+    e3w[2] = e3w0 * (1 + ssh / totaldepth)
+
+    nextindex += 1
+    return tcorrs, u_coords, v_coords, w_coords, u, v, w, nextindex, e3w
