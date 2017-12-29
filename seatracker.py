@@ -78,8 +78,6 @@ def get_initial_data(u_field_path, v_field_path, w_field_path, tracer_fields_pat
     udataset = netCDF4.Dataset(u_field_path)
     tcorrs = udataset['time_counter'][:3]
     deltat = tcorrs[1] - tcorrs[0]
-    #    xcorrs = udataset['gridX'][:]
-    #    ycorrs = udataset['gridY'][:]
     xcorrs = range(udataset.dimensions['x'].size)
     ycorrs = range(udataset.dimensions['y'].size)
     depthsize = udataset['depthu'][:].shape[0]
@@ -115,8 +113,8 @@ def get_initial_data(u_field_path, v_field_path, w_field_path, tracer_fields_pat
 
     wdataset = netCDF4.Dataset(w_field_path)
     w = numpy.zeros_like(u)
-    w = - wdataset['vovecrtz'][
-          0:3]  # change to velocity down (increasing depth)
+    # Change to sign to positive velocity downward
+    w = -wdataset['vovecrtz'][0:3]
 
     tdataset = netCDF4.Dataset(tracer_fields_path)
     ssh = tdataset['sossheig'][0:3]
@@ -220,10 +218,10 @@ def derivatives(t, poss, t_mask, e3w, e2v, e1u, w_coords, v_coords, u_coords, w,
     """
     rhs = numpy.zeros_like(poss)
     for ip in range(int(poss.shape[0]/3)):
-        point = numpy.array([t, poss[0+ip*3], poss[1+ip*3], poss[2+ip*3]])
+        point = (t, poss[0 + ip * 3], poss[1 + ip * 3], poss[2 + ip * 3])
         rhs[0+ip*3:3+ip*3] = interpolator(
             t_mask, e3w, e2v, e1u, w_coords, v_coords, u_coords, w, v, u, point)
-    return numpy.array(rhs) # array or scalar, not a tuple
+    return rhs
 
 
 def interpolator(t_mask, e3w, e2v, e1u, w_coords, v_coords, u_coords, w, v, u, point):
@@ -247,50 +245,57 @@ def interpolator(t_mask, e3w, e2v, e1u, w_coords, v_coords, u_coords, w, v, u, p
 
     :return:
     """
-    dims = len(point)
-    rhs = numpy.zeros((3))
-    if t_mask[int(point[1]), int(point[2]), int(point[3])] != 0:
-        for vel, scale, coords, data in zip([0, 1, 2], [e3w, e2v, e1u,], [w_coords, v_coords, u_coords], [w, v, u]):
-            indices = []
-            sub_coords = []
-            good = True
-            for j in range(dims) :
-                idx = numpy.digitize([point[j]], coords[j])[0]   # finds the index of region
-                if (idx == len(coords[j])):
-                    print (j, 'out of bounds', point[j], vel, coords[j])
-                    good = False
-                elif (idx == 0):
-                    print (j, 'hit surface', point[j], vel, coords[j])
-                    good = False
-                else:
-                    indices += [[idx - 1, idx]]
-                    sub_coords += [coords[j][indices[-1]]]
-            if good:
-                ## TODO: Investigate numpy.itertools.product
-                indices = numpy.array([j for j in itertools.product(*indices)])
-                sub_coords = numpy.array([j for j in itertools.product(*sub_coords)])
-                sub_data = data[list(numpy.swapaxes(indices, 0, 1))]
-                li = LinearNDInterpolator(sub_coords, sub_data, rescale=True) # https://www.mathworks.com/help/matlab/ref/interpn.html
-                if vel == 0:
-                    rhs[vel] = li([point])[0]/scale[indices[0, 0], int(point[1]), int(point[2]), int(point[3])]
-                else:
-                    rhs[vel] = li([point])[0]/scale[indices[0, 2], indices[0, 3]]
+    rhs = numpy.zeros(3)
+    if not t_mask[int(point[1]), int(point[2]), int(point[3])]:
+        # point is on land
+        return rhs
+    vars = zip(
+        (0, 1, 2), (e3w, e2v, e1u), (w_coords, v_coords, u_coords), (w, v, u))
+    for vel_idx, scale, coord, vel in vars:
+        indices, sub_coords = [], []
+        good = True
+        for j in range(len(point)):
+            idx = numpy.digitize([point[j]], coord[j])[0]
+            if idx == len(coord[j]):
+                print(j, 'out of bounds', point[j], vel_idx, coord[j])
+                good = False
+            elif j == 1 and idx == 0:
+                print(j, 'hit surface', point[j], vel_idx, coord[j])
+                good = False
             else:
-                rhs[vel] = 0.
+                indices.append([idx - 1, idx])
+                sub_coords.append(coord[j][indices[-1]])
+        if good:
+            indices = numpy.array([j for j in itertools.product(*indices)])
+            sub_coords = numpy.array([j for j in itertools.product(*sub_coords)])
+            sub_data = vel[list(numpy.swapaxes(indices, 0, 1))]
+            li = _construct_interpolator(sub_coords, sub_data)
+            rhs[vel_idx] = _interpolate(li, point, indices, scale, vel_idx)
+        else:
+            rhs[vel_idx] = 0.
     return rhs
 
 
-def update_arrays(
-    totaldepth, fractiondepth, e3w0, e3w, tcorrs, u_coords,
-    v_coords, w_coords, u, v, w, deltat, nextindex, udataset, vdataset,
-    wdataset, tdataset
-):
+def _construct_interpolator(sub_coords, sub_data):
+    li = LinearNDInterpolator(sub_coords, sub_data, rescale=True)
+    return li
+
+
+def _interpolate(li, point, indices, scale, vel_idx):
+    if vel_idx == 0:
+        rhs = li([point])[0] / scale[indices[0, 0], int(point[1]), int(point[2]), int(point[3])]
+    else:
+        rhs = li([point])[0] / scale[indices[0, 2], indices[0, 3]]
+    return rhs
+
+
+def update_arrays(totaldepth, e3w0, e3w, tcorrs, u_coords, v_coords, w_coords,
+    u, v, w, deltat, nextindex, udataset, vdataset, wdataset, tdataset):
     """
 
     ##TODO: finish doctring
 
     :param totaldepth:
-    :param fractiondepth:
     :param e3w0:
     :param e3w:
     :param tcorrs:
@@ -310,8 +315,8 @@ def update_arrays(
     :return:
     """
     tcorrs = tcorrs + deltat
-    u_coords[0, 0:len(tcorrs)] = tcorrs
-    u_coords[0, len(tcorrs):] = max(tcorrs)
+    u_coords[0, 0:tcorrs.size] = tcorrs
+    u_coords[0, tcorrs.size:] = tcorrs.max()
     v_coords[0] = u_coords[0]
     w_coords[0] = u_coords[0]
     u[0:2] = u[1:3]
@@ -321,12 +326,9 @@ def update_arrays(
     v[2, 1:] = vdataset['vomecrty'][nextindex]
     v[2, 0] = 2 * v[2, 1] - v[2, 2]
     w[0:2] = w[1:3]
-    wtemp = numpy.zeros([1, w.shape[1], w.shape[2], w.shape[3]])
-    wtemp[0] = - wdataset['vovecrtz'][nextindex]
-
-    ssh = tdataset['sossheig'][nextindex]
+    # Change to sign to positive velocity downward
+    w[2] = -wdataset['vovecrtz'][nextindex]
     e3w[0:2] = e3w[1:3]
-    e3w[2] = e3w0 * (1 + ssh / totaldepth)
-
+    e3w[2] = e3w0 * (1 + tdataset['sossheig'][nextindex] / totaldepth)
     nextindex += 1
     return tcorrs, u_coords, v_coords, w_coords, u, v, w, nextindex, e3w
