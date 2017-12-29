@@ -49,11 +49,11 @@ def main():
     while integrator.successful() and integrator.t < t1:
         integrator.integrate(integrator.t + dt)
     # more segments
-    for count in range(1):
+    for count in range(2):
         # update arrays
         tcorrs, u_coords, v_coords, w_coords, u, v, w, nextindex, e3w = seatracker.update_arrays(
-            totaldepth, fractiondepth, e3w0, e3w, tcorrs, u_coords, v_coords, w_coords, u, v, w,
-            deltat, nextindex, udataset, vdataset, wdataset, tdataset)
+            totaldepth, e3w0, e3w, tcorrs, u_coords, v_coords, w_coords, u, v,
+            w, deltat, nextindex, udataset, vdataset, wdataset, tdataset)
         t1 += deltat
         while integrator.successful() and integrator.t < t1:
             integrator.integrate(integrator.t + dt)
