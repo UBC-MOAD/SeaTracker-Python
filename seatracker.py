@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 """
 import itertools
@@ -51,7 +50,10 @@ def initialize_mesh(mesh_mask_file):
     return t_mask, e1u, e2v, e3w0, totaldepth, fractiondepth
 
 
-def get_initial_data(u_field_path, v_field_path, w_field_path, tracer_fields_path, fractiondepth, totaldepth, e3w0):
+def get_initial_data(
+    u_field_path, v_field_path, w_field_path, tracer_fields_path,
+    fractiondepth, totaldepth, e3w0
+):
     """
     ##TODO: finish doctring
 
@@ -145,7 +147,7 @@ def random_points(t_coords, deltat, t_mask):
 
     good = 0
     while good == 0:
-        tc = random.uniform(t0, t0+deltat)
+        tc = random.uniform(t0, t0 + deltat)
         zc = random.uniform(0., 39.)
         yc = random.uniform(t_coords[2, 0], t_coords[2, -1])
         xc = random.uniform(t_coords[3, 0], t_coords[3, -1])
@@ -157,7 +159,9 @@ def random_points(t_coords, deltat, t_mask):
                     yi[count, 0] = min(zc + k, 39.)
                     yi[count, 1] = min(yc + j, t_coords[2, -1])
                     yi[count, 2] = min(xc + i, t_coords[3, -1])
-                    good += t_mask[math.floor(yi[count, 0]), math.floor(yi[count, 1]), math.floor(yi[count, 2])]
+                    good += t_mask[math.floor(yi[count, 0]),
+                                   math.floor(yi[count, 1]),
+                                   math.floor(yi[count, 2])]
                     count += 1
     return tc, yi
 
@@ -187,16 +191,22 @@ def grid_points(t_coords, t_mask, zc, yc, xc):
                 yi[count, 0] = min(zc + k, 39.)
                 yi[count, 1] = min(yc + j, t_coords[2, -1])
                 yi[count, 2] = min(xc + i, t_coords[3, -1])
-                good += t_mask[math.floor(yi[count, 0]), math.floor(yi[count, 1]), math.floor(yi[count, 2])]
+                good += t_mask[math.floor(yi[count, 0]),
+                               math.floor(yi[count, 1]),
+                               math.floor(yi[count, 2])]
                 ##TODO: Refactor to report points on land or bottom using
                 ## something other than print()
-                if t_mask[math.floor(yi[count, 0]), math.floor(yi[count, 1]), math.floor(yi[count, 2])] == 0:
-                    print(zc+k, yc+j, xc+i)
+                if t_mask[math.floor(yi[count, 0]),
+                          math.floor(yi[count, 1]),
+                          math.floor(yi[count, 2])] == 0:
+                    print(zc + k, yc + j, xc + i)
                 count += 1
     return tc, yi
 
 
-def derivatives(t, poss, t_mask, e3w, e2v, e1u, w_coords, v_coords, u_coords, w, v, u):
+def derivatives(
+    t, poss, t_mask, e3w, e2v, e1u, w_coords, v_coords, u_coords, w, v, u
+):
     """
 
     ##TODO: finish doctring
@@ -217,14 +227,17 @@ def derivatives(t, poss, t_mask, e3w, e2v, e1u, w_coords, v_coords, u_coords, w,
     :return:
     """
     rhs = numpy.zeros_like(poss)
-    for ip in range(int(poss.shape[0]/3)):
+    for ip in range(int(poss.shape[0] / 3)):
         point = (t, poss[0 + ip * 3], poss[1 + ip * 3], poss[2 + ip * 3])
-        rhs[0+ip*3:3+ip*3] = interpolator(
-            t_mask, e3w, e2v, e1u, w_coords, v_coords, u_coords, w, v, u, point)
+        rhs[0 + ip * 3:3 + ip * 3] = interpolator(
+            t_mask, e3w, e2v, e1u, w_coords, v_coords, u_coords, w, v, u, point
+        )
     return rhs
 
 
-def interpolator(t_mask, e3w, e2v, e1u, w_coords, v_coords, u_coords, w, v, u, point):
+def interpolator(
+    t_mask, e3w, e2v, e1u, w_coords, v_coords, u_coords, w, v, u, point
+):
     """
 
     Based on Stackoverflow https://stackoverflow.com/users/110026/jaime
@@ -249,8 +262,8 @@ def interpolator(t_mask, e3w, e2v, e1u, w_coords, v_coords, u_coords, w, v, u, p
     if not t_mask[int(point[1]), int(point[2]), int(point[3])]:
         # point is on land
         return rhs
-    vars = zip(
-        (0, 1, 2), (e3w, e2v, e1u), (w_coords, v_coords, u_coords), (w, v, u))
+    vars = zip((0, 1, 2), (e3w, e2v, e1u), (w_coords, v_coords, u_coords),
+               (w, v, u))
     for vel_idx, scale, coord, vel in vars:
         indices, sub_coords = [], []
         good = True
@@ -267,7 +280,9 @@ def interpolator(t_mask, e3w, e2v, e1u, w_coords, v_coords, u_coords, w, v, u, p
                 sub_coords.append(coord[j][indices[-1]])
         if good:
             indices = numpy.array([j for j in itertools.product(*indices)])
-            sub_coords = numpy.array([j for j in itertools.product(*sub_coords)])
+            sub_coords = numpy.array([
+                j for j in itertools.product(*sub_coords)
+            ])
             sub_data = vel[list(numpy.swapaxes(indices, 0, 1))]
             li = _construct_interpolator(sub_coords, sub_data)
             rhs[vel_idx] = _interpolate(li, point, indices, scale, vel_idx)
@@ -283,14 +298,19 @@ def _construct_interpolator(sub_coords, sub_data):
 
 def _interpolate(li, point, indices, scale, vel_idx):
     if vel_idx == 0:
-        rhs = li([point])[0] / scale[indices[0, 0], int(point[1]), int(point[2]), int(point[3])]
+        rhs = li([point])[0] / scale[indices[0, 0],
+                                     int(point[1]),
+                                     int(point[2]),
+                                     int(point[3])]
     else:
         rhs = li([point])[0] / scale[indices[0, 2], indices[0, 3]]
     return rhs
 
 
-def update_arrays(totaldepth, e3w0, e3w, tcorrs, u_coords, v_coords, w_coords,
-    u, v, w, deltat, nextindex, udataset, vdataset, wdataset, tdataset):
+def update_arrays(
+    totaldepth, e3w0, e3w, tcorrs, u_coords, v_coords, w_coords, u, v, w,
+    deltat, nextindex, udataset, vdataset, wdataset, tdataset
+):
     """
 
     ##TODO: finish doctring
