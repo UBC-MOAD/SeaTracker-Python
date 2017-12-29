@@ -27,15 +27,15 @@ tracer_fields_path = 'hindcast/SalishSea_1h_20160801_20160801_grid_T.nc'
 
 
 def main():
-    t_mask, e1u, e2v, e3w0, totaldepth, fractiondepth = \
-        seatracker.initialize_mesh(
-        mesh_mask_path)
+    t_mask, e1u, e2v, e3w0, totaldepth = seatracker.initialize_mesh(
+        mesh_mask_path
+    )
     (
         u, v, w, tcorrs, t_coords, u_coords, v_coords, w_coords, deltat,
         nextindex, e3w, udataset, vdataset, wdataset, tdataset
     ) = seatracker.get_initial_data(
         u_field_path, v_field_path, w_field_path, tracer_fields_path,
-        fractiondepth, totaldepth, e3w0
+        totaldepth, e3w0
     )
     tc, yi = seatracker.grid_points(t_coords, t_mask, 25 - 1, 446 - 1, 304 - 1)
     t0 = tcorrs[0]

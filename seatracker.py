@@ -40,19 +40,17 @@ def initialize_mesh(mesh_mask_file):
         e3w0 = data['e3w_0'][0]
         mbathy = data['mbathy'][0]
         gdepw_0 = data['gdepw_0'][0]
-        totaldepth = numpy.empty_like(mbathy)
+        total_depth = numpy.empty_like(mbathy)
         for i in range(t_mask.shape[1]):
             for j in range(t_mask.shape[2]):
-                totaldepth[i, j] = gdepw_0[int(mbathy[i, j]), i, j]
-        #TODO: Investigate runtime divide by zero and invalid value warnings
-        fractiondepth = gdepw_0 / totaldepth
+                total_depth[i, j] = gdepw_0[int(mbathy[i, j]), i, j]
     ##TODO: Refactor to return SimpleNamespace
-    return t_mask, e1u, e2v, e3w0, totaldepth, fractiondepth
+    return t_mask, e1u, e2v, e3w0, total_depth
 
 
 def get_initial_data(
     u_field_path, v_field_path, w_field_path, tracer_fields_path,
-    fractiondepth, totaldepth, e3w0
+    total_depth, e3w0
 ):
     """
     ##TODO: finish doctring
@@ -69,20 +67,19 @@ def get_initial_data(
     :param tracer_fields_path: Path and file name of the NEMO tracer fields to
                                load.
 
-    :param fractiondepth:
-    :param totaldepth:
+    :param total_depth:
     :param e3w0:
 
     :return:
     :rtype: 15-tuple of :py:class:`numpy.ndarray`
     """
     ##TODO: Accept str, Path, or netCDF4.Dataset objects for field file paths
-    udataset = netCDF4.Dataset(u_field_path)
-    tcorrs = udataset['time_counter'][:3]
+    u_dataset = netCDF4.Dataset(u_field_path)
+    tcorrs = u_dataset['time_counter'][:3]
     deltat = tcorrs[1] - tcorrs[0]
-    xcorrs = range(udataset.dimensions['x'].size)
-    ycorrs = range(udataset.dimensions['y'].size)
-    depthsize = udataset['depthu'][:].shape[0]
+    xcorrs = range(u_dataset.dimensions['x'].size)
+    ycorrs = range(u_dataset.dimensions['y'].size)
+    depthsize = u_dataset['depthu'][:].shape[0]
     # this makes it depth, not grid point and I need one above the surface
     zcorrs = numpy.linspace(0, depthsize, depthsize + 1) - 0.5
 
@@ -105,7 +102,7 @@ def get_initial_data(
     w_coords[1] = t_coords[1] + 0.5
 
     u = numpy.zeros((3, len(zcorrs), len(ycorrs), len(xcorrs)))
-    u[:, 1:] = udataset['vozocrtx'][0:3]
+    u[:, 1:] = u_dataset['vozocrtx'][0:3]
     u[:, 0] = 2 * u[:, 1] - u[:, 2]
 
     v = numpy.zeros_like(u)
@@ -122,11 +119,11 @@ def get_initial_data(
     ssh = tdataset['sossheig'][0:3]
     e3w = numpy.empty_like(w)
     for i in range(3):
-        e3w[i] = e3w0 * (1 + ssh[i] / totaldepth)
+        e3w[i] = e3w0 * (1 + ssh[i] / total_depth)
 
     nextindex = 3
     ##TODO: Refactor to return SimpleNamespace?
-    return u, v, w, tcorrs, t_coords, u_coords, v_coords, w_coords, deltat, nextindex, e3w, udataset, vdataset, wdataset, tdataset
+    return u, v, w, tcorrs, t_coords, u_coords, v_coords, w_coords, deltat, nextindex, e3w, u_dataset, vdataset, wdataset, tdataset
 
 
 def random_points(t_coords, deltat, t_mask):
@@ -308,14 +305,14 @@ def _interpolate(li, point, indices, scale, vel_idx):
 
 
 def update_arrays(
-    totaldepth, e3w0, e3w, tcorrs, u_coords, v_coords, w_coords, u, v, w,
-    deltat, nextindex, udataset, vdataset, wdataset, tdataset
+    total_depth, e3w0, e3w, tcorrs, u_coords, v_coords, w_coords, u, v, w,
+    deltat, nextindex, u_dataset, vdataset, wdataset, tdataset
 ):
     """
 
     ##TODO: finish doctring
 
-    :param totaldepth:
+    :param total_depth:
     :param e3w0:
     :param e3w:
     :param tcorrs:
@@ -327,7 +324,7 @@ def update_arrays(
     :param w:
     :param deltat:
     :param nextindex:
-    :param udataset:
+    :param u_dataset:
     :param vdataset:
     :param wdataset:
     :param tdataset:
@@ -340,7 +337,7 @@ def update_arrays(
     v_coords[0] = u_coords[0]
     w_coords[0] = u_coords[0]
     u[0:2] = u[1:3]
-    u[2, 1:] = udataset['vozocrtx'][nextindex]
+    u[2, 1:] = u_dataset['vozocrtx'][nextindex]
     u[2, 0] = 2 * u[2, 1] - u[2, 2]
     v[0:2] = v[1:3]
     v[2, 1:] = vdataset['vomecrty'][nextindex]
@@ -349,6 +346,6 @@ def update_arrays(
     # Change to sign to positive velocity downward
     w[2] = -wdataset['vovecrtz'][nextindex]
     e3w[0:2] = e3w[1:3]
-    e3w[2] = e3w0 * (1 + tdataset['sossheig'][nextindex] / totaldepth)
+    e3w[2] = e3w0 * (1 + tdataset['sossheig'][nextindex] / total_depth)
     nextindex += 1
     return tcorrs, u_coords, v_coords, w_coords, u, v, w, nextindex, e3w
