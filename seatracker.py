@@ -38,11 +38,33 @@ class Dim4d(IntEnum):
 
 
 @attr.s
+class SeaTracker:
+    """Post-processing particle tracker for NEMO ocean model run results.
+
+    :param mesh_mask_file: Path and file name of the NEMO mesh mask file
+                           to initialize the grid from.
+    :type mesh_mask_file: :py:class:`pathlib.Path` or str
+    """
+    mesh_mask_file = attr.ib()
+
+    #: Particle tracking grid; :py:class:`seatracker._Grid` instance.
+    _grid = attr.ib(init=False, default=None)
+
+    def setup(self):
+        """Set up the particle tracker.
+
+        1. Set up the particle tracking grid.
+        """
+        self._grid = _Grid(self.mesh_mask_file)
+        self._grid.setup()
+
+
+@attr.s
 class _Grid:
     """Particle tracking grid.
 
     :param mesh_mask_file: Path and file name of the NEMO mesh mask file
-                           to initialize the mesh from.
+                           to initialize the grid from.
     :type mesh_mask_file: :py:class:`pathlib.Path` or str
     """
 
