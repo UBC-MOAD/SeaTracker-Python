@@ -12,7 +12,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
+"""Functions-in-module implementation of SeaTracker.
+
+This is a transitional development implementation between the original
+SeaTracker notebook, and the object implentation in the seatracker module.
 """
 import itertools
 import math
