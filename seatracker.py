@@ -21,9 +21,20 @@ VVL option in NEMO.
 Please see the TestSeaTrackerObject.ipynb notebook for an example of how to
 use this module.
 """
+from enum import IntEnum
+
 import attr
 import netCDF4
 import numpy
+
+
+class Dim4d(IntEnum):
+    """Symbolic aliases for the dimension indices of NEMO 4d arrays.
+    """
+    t = 0
+    z = 1
+    y = 2
+    x = 3
 
 
 @attr.s
