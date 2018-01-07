@@ -44,19 +44,51 @@ class SeaTracker:
     :param mesh_mask_file: Path and file name of the NEMO mesh mask file
                            to initialize the grid from.
     :type mesh_mask_file: :py:class:`pathlib.Path` or str
+
+    :param u_field_file: Path and file name of the NEMO u velocity component
+                         results field file to track particles in.
+    :type u_field_file: :py:class:`pathlib.Path` or str
+
+    :param v_field_file: Path and file name of the NEMO v velocity component
+                         results field file to track particles in.
+    :type v_field_file: :py:class:`pathlib.Path` or str
     """
     mesh_mask_file = attr.ib()
+    u_field_file = attr.ib()
+    v_field_file = attr.ib()
 
     #: Particle tracking grid; :py:class:`seatracker._Grid` instance.
     _grid = attr.ib(init=False, default=None)
+    #: u component of velocity field in which to track particles;
+    #: :py:class:`seatracker._ModelField` instance.
+    _u_field = attr.ib(init=False, default=None)
+    #: v component of velocity field in which to track particles;
+    #: :py:class:`seatracker._ModelField` instance.
+    _v_field = attr.ib(init=False, default=None)
 
     def setup(self):
         """Set up the particle tracker.
 
         1. Set up the particle tracking grid.
+        2. Set up the model results velocity component fields to track
+           particles in.
         """
         self._grid = _Grid(self.mesh_mask_file)
         self._grid.setup()
+
+        self._u_field = _ModelField(self.u_field_path)
+        self._v_field = _ModelField(self.v_field_path)
+        fields = zip((self._u_field, self._v_field), ('depthu', 'depthv'),
+                     ('vozocrtx', 'vomecrty'))
+        for vel_field, depth_var, vel_var in fields:
+            vel_field.load()
+            vel_field.setup(depth_var)
+            vel_field.values[:, 1:] = vel_field.dataset[vel_var][0:3]
+            vel_field.values[:, 0] = (
+                2 * vel_field.values[:, 1] - vel_field.values[:, 2]
+            )
+        self._u_field.coords[Dim4d.x] = self._u_field.coords[Dim4d.x] + 0.5
+        self._v_field.coords[Dim4d.y] = self._v_field.coords[Dim4d.y] + 0.5
 
 
 @attr.s
