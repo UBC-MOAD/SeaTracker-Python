@@ -52,10 +52,15 @@ class SeaTracker:
     :param v_field_file: Path and file name of the NEMO v velocity component
                          results field file to track particles in.
     :type v_field_file: :py:class:`pathlib.Path` or str
+
+    :param w_field_file: Path and file name of the NEMO w velocity component
+                         results field file to track particles in.
+    :type w_field_file: :py:class:`pathlib.Path` or str
     """
     mesh_mask_file = attr.ib()
     u_field_file = attr.ib()
     v_field_file = attr.ib()
+    w_field_file = attr.ib()
 
     #: Particle tracking grid; :py:class:`seatracker._Grid` instance.
     _grid = attr.ib(init=False, default=None)
@@ -65,6 +70,9 @@ class SeaTracker:
     #: v component of velocity field in which to track particles;
     #: :py:class:`seatracker._ModelField` instance.
     _v_field = attr.ib(init=False, default=None)
+    #: w component of velocity field in which to track particles;
+    #: :py:class:`seatracker._ModelField` instance.
+    _w_field = attr.ib(init=False, default=None)
 
     def setup(self):
         """Set up the particle tracker.
@@ -89,6 +97,13 @@ class SeaTracker:
             )
         self._u_field.coords[Dim4d.x] = self._u_field.coords[Dim4d.x] + 0.5
         self._v_field.coords[Dim4d.y] = self._v_field.coords[Dim4d.y] + 0.5
+
+        self._w_field = _ModelField(self.w_field_path)
+        self._w_field.load()
+        self._w_field.setup('depthw')
+        # Change to sign to positive velocity downward
+        self._w_field.values = -self._w_field.dataset['vovecrtz'][0:3]
+        self._w_field.coords[Dim4d.z] = self._w_field.coords[Dim4d.z] + 0.5
 
 
 @attr.s
