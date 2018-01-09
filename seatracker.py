@@ -56,11 +56,16 @@ class SeaTracker:
     :param w_field_file: Path and file name of the NEMO w velocity component
                          results field file to track particles in.
     :type w_field_file: :py:class:`pathlib.Path` or str
+
+    :param ssh_field_file: Path and file name of the NEMO tracer results field
+                           file that contains the sea surface height field.
+    :type ssh_field_file: :py:class:`pathlib.Path` or str
     """
     mesh_mask_file = attr.ib()
     u_field_file = attr.ib()
     v_field_file = attr.ib()
     w_field_file = attr.ib()
+    ssh_field_file = attr.ib()
 
     #: Particle tracking grid; :py:class:`seatracker._Grid` instance.
     _grid = attr.ib(init=False, default=None)
@@ -73,6 +78,8 @@ class SeaTracker:
     #: w component of velocity field in which to track particles;
     #: :py:class:`seatracker._ModelField` instance.
     _w_field = attr.ib(init=False, default=None)
+    #:  sea surface height field; :py:class:`seatracker._ModelField` instance.
+    _e3w_field = attr.ib(init=False, default=None)
 
     def setup(self):
         """Set up the particle tracker.
@@ -80,6 +87,7 @@ class SeaTracker:
         1. Set up the particle tracking grid.
         2. Set up the model results velocity component fields to track
            particles in.
+        3. Set up the model results sea surface height field.
         """
         self._grid = _Grid(self.mesh_mask_file)
         self._grid.setup()
@@ -104,6 +112,16 @@ class SeaTracker:
         # Change to sign to positive velocity downward
         self._w_field.values = -self._w_field.dataset['vovecrtz'][0:3]
         self._w_field.coords[Dim4d.z] = self._w_field.coords[Dim4d.z] + 0.5
+
+        self._e3w_field = _ModelField(self._ssh_field_file)
+        self._e3w_field.load()
+        self._e3w_field.setup('deptht')
+        self._e3w_field.values = numpy.empty_like(self._w_field.values)
+        ssh = self._e3w_field.dataset['sossheig'][0:3]
+        for i in range(3):
+            self._e3w_field.values[i] = self._grid.e3w0 * (
+                1 + ssh[i] / self._grid.depth
+            )
 
 
 @attr.s
