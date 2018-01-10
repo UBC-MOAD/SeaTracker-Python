@@ -68,18 +68,18 @@ class SeaTracker:
     ssh_field_file = attr.ib()
 
     #: Particle tracking grid; :py:class:`seatracker._Grid` instance.
-    _grid = attr.ib(init=False, default=None)
+    _grid = attr.ib(init=False, repr=False)
     #: u component of velocity field in which to track particles;
     #: :py:class:`seatracker._ModelField` instance.
-    _u_field = attr.ib(init=False, default=None)
+    _u_field = attr.ib(init=False, repr=False)
     #: v component of velocity field in which to track particles;
     #: :py:class:`seatracker._ModelField` instance.
-    _v_field = attr.ib(init=False, default=None)
+    _v_field = attr.ib(init=False, repr=False)
     #: w component of velocity field in which to track particles;
     #: :py:class:`seatracker._ModelField` instance.
-    _w_field = attr.ib(init=False, default=None)
+    _w_field = attr.ib(init=False, repr=False)
     #:  sea surface height field; :py:class:`seatracker._ModelField` instance.
-    _e3w_field = attr.ib(init=False, default=None)
+    _e3w_field = attr.ib(init=False, repr=False)
 
     def setup(self):
         """Set up the particle tracker.
@@ -132,12 +132,12 @@ class _Grid:
 
     mesh_mask_file = attr.ib()
     ##TODO: Add docstrings for attributes below
-    t_mask = attr.ib(init=False, default=None)
-    e1u = attr.ib(init=False, default=None)
-    e2v = attr.ib(init=False, default=None)
-    e3w0 = attr.ib(init=False, default=None)
+    t_mask = attr.ib(init=False, repr=False)
+    e1u = attr.ib(init=False, repr=False)
+    e2v = attr.ib(init=False, repr=False)
+    e3w0 = attr.ib(init=False, repr=False)
     #: Particle tracking grid level depths 2d array.
-    depth = attr.ib(init=False, default=None)
+    depth = attr.ib(init=False, repr=False)
 
     def setup(self):
         """Set up the particle tracking grid by extracting the necessary grid
@@ -168,13 +168,13 @@ class _ModelField:
 
     model_field_file = attr.ib()
     #: Model results field :py:class:`netCDF4.Dataset` instance.
-    dataset = attr.ib(init=False, default=None)
+    dataset = attr.ib(init=False, repr=False)
     #: Model results time step [s].
-    delta_t = attr.ib(init=False, default=None)
+    delta_t = attr.ib(init=False, repr=False)
     ##TODO: Get Susan to describe model results field coords array
-    coords = attr.ib(init=False, default=None)
+    coords = attr.ib(init=False, repr=False)
     #: Model results field values 4d array.
-    values = attr.ib(init=False, default=None)
+    values = attr.ib(init=False, repr=False)
 
     def setup(self, depth_var):
         """Set up the model results field arrays.
