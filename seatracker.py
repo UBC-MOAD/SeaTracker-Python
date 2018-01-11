@@ -60,12 +60,17 @@ class SeaTracker:
     :param ssh_field_file: Path and file name of the NEMO tracer results field
                            file that contains the sea surface height field.
     :type ssh_field_file: :py:class:`pathlib.Path` or str
+
+    :param particle_cloud: 3d cloud of particles tracked in the NEMO results
+                           flow field.
+    :type particle_cloud: :py:class:`seatracker.ParticleCloud` instance
     """
     mesh_mask_file = attr.ib()
     u_field_file = attr.ib()
     v_field_file = attr.ib()
     w_field_file = attr.ib()
     ssh_field_file = attr.ib()
+    particle_cloud = attr.ib(init=False, default=None)
 
     #: Particle tracking grid; :py:class:`seatracker._Grid` instance.
     _grid = attr.ib(init=False, repr=False)
@@ -88,6 +93,7 @@ class SeaTracker:
         2. Set up the model results velocity component fields to track
            particles in.
         3. Set up the model results sea surface height field.
+        4. Prepare the particle cloud data structure.
         """
         self._grid = _Grid(self.mesh_mask_file)
         self._grid.setup()
@@ -119,11 +125,12 @@ class SeaTracker:
             self._e3w_field.values[i] = self._grid.e3w0 * (
                 1 + ssh[i] / self._grid.depth
             )
+        self.particle_cloud = ParticleCloud()
 
 
 @attr.s
 class ParticleCloud:
-    """3d cloud of particles tracked in the NEMO results.
+    """3d cloud of particles tracked in the NEMO results flow field.
 
     The cloud is composed of a particle at a selected model grid point,
     and 26 nearby locations.
