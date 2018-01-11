@@ -37,6 +37,14 @@ class Dim4d(IntEnum):
     x = 3
 
 
+class DimPoint(IntEnum):
+    """Symbolic aliases for the spatial dimension indices of grid point arrays.
+    """
+    z = 0
+    y = 1
+    x = 2
+
+
 @attr.s
 class SeaTracker:
     """Post-processing particle tracker for NEMO ocean model run results.
@@ -83,7 +91,7 @@ class SeaTracker:
     #: w component of velocity field in which to track particles;
     #: :py:class:`seatracker._ModelField` instance.
     _w_field = attr.ib(init=False, repr=False)
-    #:  sea surface height field; :py:class:`seatracker._ModelField` instance.
+    #: Sea surface height field; :py:class:`seatracker._ModelField` instance.
     _e3w_field = attr.ib(init=False, repr=False)
 
     def setup(self):
