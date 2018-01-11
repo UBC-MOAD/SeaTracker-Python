@@ -22,6 +22,7 @@ Please see the TestSeaTrackerObject.ipynb notebook for an example of how to
 use this module.
 """
 from enum import IntEnum
+import random
 
 import attr
 import netCDF4
@@ -133,7 +134,7 @@ class SeaTracker:
             self._e3w_field.values[i] = self._grid.e3w0 * (
                 1 + ssh[i] / self._grid.depth
             )
-        self.particle_cloud = ParticleCloud()
+        self.particle_cloud = ParticleCloud(self._grid, self._e3w_field)
 
 
 @attr.s
@@ -142,7 +143,16 @@ class ParticleCloud:
 
     The cloud is composed of a particle at a selected model grid point,
     and 26 nearby locations.
+
+    :param _grid: Particle tracking grid.
+    :type _grid: :py:class:`seatracker._Grid` instance
+
+    :param _e3w_field: Sea surface height field.
+    :type _e3w_field: :py:class:`seatracker._ModelField` instance.
     """
+
+    _grid = attr.ib()
+    _e3w_field = attr.ib()
 
     #: Number of particles in the cloud.
     N_PARTICLES = attr.ib(init=False, default=27)
@@ -152,6 +162,62 @@ class ParticleCloud:
     #: are tracked, the particle dimensions are (t, z, y, x), and the initial
     ## particle locations are stored at [0, :, :].
     tracks = attr.ib(init=False, default=None)
+    #: Initial grid indices of particles.
+    _initial_indices = attr.ib(init=False, repr=False)
+    #: Time at which particles are at their initial grid indices.
+    _initial_time = attr.ib(init=False, repr=False)
+
+    def random(self, delta_t):
+        """Choose a random point in the domain at a random time before delta_t
+        and calculate a 3-D cloud of the 27 particles near to (and including)
+        the chosen point. All particles in the cloud are guaranteed
+        to be in the water.
+
+        :param delta_t: Time interval at beginning of NEMO results in which
+                        to randomly choose particle cloud centre point.
+        :type delta_t: int or float
+        """
+        t0 = self._e3w_field.coords[0, 0]
+        n_depths = self._grid.t_mask.shape[0] - 1
+        self._initial_indices = numpy.zeros((self.N_PARTICLES, len(DimPoint)))
+        on_land = False
+        while not on_land:
+            self._initial_time = random.uniform(t0, t0 + delta_t)
+            zc = random.uniform(0, n_depths)
+            yc = random.uniform(
+                self._e3w_field.coords[Dim4d.y, 0],
+                self._e3w_field.coords[Dim4d.y, -1]
+            )
+            xc = random.uniform(
+                self._e3w_field.coords[Dim4d.x, 0],
+                self._e3w_field.coords[Dim4d.x, -1]
+            )
+
+            n_particle = 0
+            for k in range(len(DimPoint)):
+                for j in range(len(DimPoint)):
+                    for i in range(len(DimPoint)):
+                        self._initial_indices[n_particle, DimPoint.z] = min(
+                            zc + k, n_depths
+                        )
+                        self._initial_indices[n_particle, DimPoint.y] = min(
+                            yc + j, self._e3w_field.coords[Dim4d.y, -1]
+                        )
+                        self._initial_indices[n_particle, DimPoint.x] = min(
+                            xc + i, self._e3w_field.coords[Dim4d.x, -1]
+                        )
+                        on_land = self._grid.t_mask[
+                            numpy.math.floor(
+                                self._initial_indices[n_particle, DimPoint.z]
+                            ),
+                            numpy.math.floor(
+                                self._initial_indices[n_particle, DimPoint.y]
+                            ),
+                            numpy.math.floor(
+                                self._initial_indices[n_particle, DimPoint.x]
+                            )
+                        ]
+                        n_particle += 1
 
 
 @attr.s
