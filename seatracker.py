@@ -122,6 +122,24 @@ class SeaTracker:
 
 
 @attr.s
+class ParticleCloud:
+    """3d cloud of particles tracked in the NEMO results.
+
+    The cloud is composed of a particle at a selected model grid point,
+    and 26 nearby locations.
+    """
+
+    #: Number of particles in the cloud.
+    N_PARTICLES = attr.ib(init=False, default=27)
+    #: Particle tracks in the model flow field;
+    #: :py:class:`numpy.ndarray` with shape (time_steps, N_PARTICLES, 4),
+    ## where time_steps is the number of time steps over which the particles
+    #: are tracked, the particle dimensions are (t, z, y, x), and the initial
+    ## particle locations are stored at [0, :, :].
+    tracks = attr.ib(init=False, default=None)
+
+
+@attr.s
 class _Grid:
     """Particle tracking grid.
 
