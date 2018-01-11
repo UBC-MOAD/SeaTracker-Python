@@ -98,8 +98,8 @@ class SeaTracker:
         self._grid = _Grid(self.mesh_mask_file)
         self._grid.setup()
 
-        self._u_field = _ModelField(self.u_field_path)
-        self._v_field = _ModelField(self.v_field_path)
+        self._u_field = _ModelField(self.u_field_file)
+        self._v_field = _ModelField(self.v_field_file)
         fields = zip((self._u_field, self._v_field), ('depthu', 'depthv'),
                      ('vozocrtx', 'vomecrty'))
         for vel_field, depth_var, vel_var in fields:
@@ -111,13 +111,13 @@ class SeaTracker:
         self._u_field.coords[Dim4d.x] = self._u_field.coords[Dim4d.x] + 0.5
         self._v_field.coords[Dim4d.y] = self._v_field.coords[Dim4d.y] + 0.5
 
-        self._w_field = _ModelField(self.w_field_path)
+        self._w_field = _ModelField(self.w_field_file)
         self._w_field.setup('depthw')
         # Change to sign to positive velocity downward
         self._w_field.values = -self._w_field.dataset['vovecrtz'][0:3]
         self._w_field.coords[Dim4d.z] = self._w_field.coords[Dim4d.z] + 0.5
 
-        self._e3w_field = _ModelField(self._ssh_field_file)
+        self._e3w_field = _ModelField(self.ssh_field_file)
         self._e3w_field.setup('deptht')
         self._e3w_field.values = numpy.empty_like(self._w_field.values)
         ssh = self._e3w_field.dataset['sossheig'][0:3]
