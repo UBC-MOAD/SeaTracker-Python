@@ -169,7 +169,7 @@ class ParticleCloud:
 
     def random(self, delta_t):
         """Choose a random point in the domain at a random time before delta_t
-        and calculate a 3-D cloud of the 27 particles near to (and including)
+        and calculate a 3d cloud of the 27 particles near to (and including)
         the chosen point. All particles in the cloud are guaranteed
         to be in the water.
 
@@ -218,6 +218,54 @@ class ParticleCloud:
                             )
                         ]
                         n_particle += 1
+
+    def at_point(self, zc, yc, xc):
+        """Calculate the 3d cloud of the 27 particles near to (and including)
+        the (zc, yc, xc) point. Particles located on the bottom or land are
+        reported.
+
+        :param int zc: z index of the location of the particle at the centre
+                       of the cloud.
+
+        :param int yc: y index of the location of the particle at the centre
+                       of the cloud.
+
+        :param int xc: x index of the location of the particle at the centre
+                       of the cloud.
+        """
+        self._initial_time = self._e3w_field.coords[0, 0]
+        n_depths = self._grid.t_mask.shape[0] - 1
+        self._initial_indices = numpy.zeros((self.N_PARTICLES, len(DimPoint)))
+
+        n_particle = 0
+        for k in range(len(DimPoint)):
+            for j in range(len(DimPoint)):
+                for i in range(len(DimPoint)):
+                    self._initial_indices[n_particle, DimPoint.z] = min(
+                        zc + k, n_depths
+                    )
+                    self._initial_indices[n_particle, DimPoint.y] = min(
+                        yc + j, self._e3w_field.coords[Dim4d.y, -1]
+                    )
+                    self._initial_indices[n_particle, DimPoint.x] = min(
+                        xc + i, self._e3w_field.coords[Dim4d.x, -1]
+                    )
+                    on_land = not self._grid.t_mask[
+                        numpy.math.
+                        floor(self._initial_indices[n_particle, DimPoint.z]),
+                        numpy.math.
+                        floor(self._initial_indices[n_particle, DimPoint.y]),
+                        numpy.math.
+                        floor(self._initial_indices[n_particle, DimPoint.x])
+                    ]
+                    ##TODO: Refactor to report points on land or bottom using
+                    ## something other than print()
+                    if on_land:
+                        print(
+                            f'on land or the bottom: '
+                            f'k={zc + k} j={yc + j} i={xc + i}'
+                        )
+                    n_particle += 1
 
 
 @attr.s
