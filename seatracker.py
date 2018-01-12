@@ -267,6 +267,18 @@ class ParticleCloud:
                         )
                     n_particle += 1
 
+    def _init_tracks(self, track_steps):
+        """Create particle tracks array and load initial time and particle
+        indices into it.
+
+        :param int track_steps: Number of time steps in particle tracks.
+        """
+        self.tracks = numpy.empty(
+            (int(track_steps) + 1, self.N_PARTICLES, len(Dim4d))
+        )
+        self.tracks[0, :, Dim4d.t] = self._initial_time
+        self.tracks[0, :, Dim4d.z:] = self._initial_indices
+
 
 @attr.s
 class _Grid:
